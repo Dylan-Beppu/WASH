@@ -1,3 +1,5 @@
 /.vscode
 /a.exe
 *.out
+*.cpp
+*.exe

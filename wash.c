@@ -130,9 +130,44 @@ int main(int argc, char *argv[]) {
 			PrintHelp();
 
 		} else if(strncmp(trimmedInput, "./", 2) == 0) {
-			//TODO: fork and run the file if exists
 			//TODO: check for redirection
 
+
+			// Extract the path to the application
+            char *appPath = trimmedInput;
+
+            // Check if the file exists and is executable
+            if (access(appPath, X_OK) == 0) {
+
+                // Fork a child process
+                pid_t pid = fork();
+                if (pid == 0) {
+                    // Child process: execute the application
+                    char *args[] = {appPath, NULL}; // Arguments for the application
+                    if (execvp(appPath, args) == -1) {
+                        perror("Error running application");
+                    }
+                    exit(EXIT_FAILURE); // Exit child process if execvp fails
+                } else if (pid < 0) {
+                    // Fork failed
+                    perror("Fork failed");
+                } else {
+                    // Parent process: wait for the child process to finish
+                    int status;
+                    if (waitpid(pid, &status, 0) == -1) {
+                        perror("Error waiting for child process");
+                    }
+                }
+            } else {
+
+
+				// Run through path to see if anythign can run
+
+
+
+                // File does not exist or is not executable
+                perror("Error: File does not exist or is not executable");
+            }
 
 		} else {
 			printf("Not a valid command: %s\n", trimmedInput);
@@ -141,6 +176,7 @@ int main(int argc, char *argv[]) {
 		/*So wants for other stuff:
 			Clear
 			Date
+			Ls
 		*/
 
 

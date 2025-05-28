@@ -56,6 +56,13 @@ int main(int argc, char *argv[]) {
 
 
 
+		//varibels inits
+		char currWorkingDir[1024];
+
+		//Get directory here so cd and running stuff is easer
+		getcwd(currWorkingDir, sizeof(currWorkingDir));
+
+
 		//handle inputs
 		if (strcmp(trimmedInput, "exit") == 0) {
 			return 0;
@@ -68,20 +75,13 @@ int main(int argc, char *argv[]) {
     		printf("%s\n", message);
 			
 		} else if(strcmp(trimmedInput, "pwd") == 0) {
-			// Buffer to store the current working directory
-            char cwd[1024];
-
-            // Get the current working directory
-            if (getcwd(cwd, sizeof(cwd)) != NULL) {
-                printf("%s\n", cwd); // Print the current working directory
-            } else {
-                perror("getcwd"); // Print an error message if getcwd fails
-            }
-
+			printf("%s\n", currWorkingDir); // Print the current working directory
 
 		} else if(strncmp(trimmedInput, "cd", 2) == 0) {
 			printf("Am i running?\n");
 
+
+			
 		} else if(strncmp(trimmedInput, "setpath", 7) == 0) {
 		
 		} else if(strcmp(trimmedInput, "help") == 0) {
@@ -93,14 +93,11 @@ int main(int argc, char *argv[]) {
 		} else {
 			printf("Not a valid command: %s\n", trimmedInput);
 
-
-			/*So wants for other stuff:
-				Clear
-				Date
-
-			*/
 		}
-
+		/*So wants for other stuff:
+			Clear
+			Date
+		*/
 
 
 

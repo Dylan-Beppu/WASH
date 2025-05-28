@@ -5,6 +5,14 @@
 
 
 
+
+//use Doxygen for function comments
+
+/**
+ * @brief Displays the help screen with information about the program's usage.
+ * 
+ * This function prints a simple help message to the console.
+ */
 void PrintHelp(){
 	printf("Im the help screen\n\n");
 }
@@ -86,6 +94,7 @@ int main(int argc, char *argv[]) {
             if (strlen(path) == 0) {
                 const char *homeDir = getenv("HOME");
                 if (homeDir) {
+					//Set the path to home, handle error if present (does not work on windows)
                     if (chdir(homeDir) != 0) {
                         perror("cd");
                     }
@@ -96,6 +105,7 @@ int main(int argc, char *argv[]) {
 
             // Handle ".." 
             else if (strcmp(path, "..") == 0) {
+				//Set the path to parent folder, handle error if present
                 if (chdir("..") != 0) {
 					perror("cd");                    
                 }
@@ -103,6 +113,7 @@ int main(int argc, char *argv[]) {
 	
             // Handle other paths
             else {
+				//Set the path to child path string, handle error if present
                 if (chdir(path) != 0) {
                     perror("cd");
                 }
@@ -111,6 +122,9 @@ int main(int argc, char *argv[]) {
 
 
 		} else if(strncmp(trimmedInput, "setpath", 7) == 0) {
+			
+
+
 		
 		} else if(strcmp(trimmedInput, "help") == 0) {
 			PrintHelp();
@@ -118,6 +132,8 @@ int main(int argc, char *argv[]) {
 		} else if(strncmp(trimmedInput, "./", 2) == 0) {
 			//TODO: fork and run the file if exists
 			//TODO: check for redirection
+
+
 		} else {
 			printf("Not a valid command: %s\n", trimmedInput);
 

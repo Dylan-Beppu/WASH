@@ -1,12 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h> //ignore error, linux library
 
 
 
 void PrintHelp(){
 	printf("Im the help screen\n\n");
 }
+
+
+
+
+
 
 
 
@@ -46,7 +52,7 @@ int main(int argc, char *argv[]) {
 
 		//TODO: Remove eventually
 		// printf("Raw  input: |%s|\n", input);
-		printf("trim input: |%s|\n", trimmedInput);
+		printf("\ttrim input: |%s|\n", trimmedInput);
 
 
 
@@ -62,9 +68,20 @@ int main(int argc, char *argv[]) {
     		printf("%s\n", message);
 			
 		} else if(strcmp(trimmedInput, "pwd") == 0) {
+			// Buffer to store the current working directory
+            char cwd[1024];
+
+            // Get the current working directory
+            if (getcwd(cwd, sizeof(cwd)) != NULL) {
+                printf("%s\n", cwd); // Print the current working directory
+            } else {
+                perror("getcwd"); // Print an error message if getcwd fails
+            }
+
 
 		} else if(strncmp(trimmedInput, "cd", 2) == 0) {
-		
+			printf("Am i running?\n");
+
 		} else if(strncmp(trimmedInput, "setpath", 7) == 0) {
 		
 		} else if(strcmp(trimmedInput, "help") == 0) {

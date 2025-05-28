@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
 
 
 
-		//varibels inits
+		//variables inits
 		char currWorkingDir[1024];
 
 		//Get directory here so cd and running stuff is easer
@@ -68,7 +68,8 @@ int main(int argc, char *argv[]) {
 			return 0;
 
 		} else if(strncmp(trimmedInput, "echo", 4) == 0) {
-		    char *message = trimmedInput + 5; // ignore echo
+		    char *message = trimmedInput + 4; // ignore echo
+			while (*message == ' ') message++;
 			//TODO: check for redirection here
 			
 		    // Print the remaining message
@@ -78,10 +79,37 @@ int main(int argc, char *argv[]) {
 			printf("%s\n", currWorkingDir); // Print the current working directory
 
 		} else if(strncmp(trimmedInput, "cd", 2) == 0) {
-			printf("Am i running?\n");
+			char *path = trimmedInput + 2;
+            while (*path == ' ') path++; // Skip leading spaces
 
+            // Handle no input 
+            if (strlen(path) == 0) {
+                const char *homeDir = getenv("HOME");
+                if (homeDir) {
+                    if (chdir(homeDir) != 0) {
+                        perror("cd");
+                    }
+                } else {
+                    printf("HOME environment variable not set.\n");
+                }
+            } 
 
+            // Handle ".." 
+            else if (strcmp(path, "..") == 0) {
+                if (chdir("..") != 0) {
+					perror("cd");                    
+                }
+            } 
+	
+            // Handle other paths
+            else {
+                if (chdir(path) != 0) {
+                    perror("cd");
+                }
+            }
 			
+
+
 		} else if(strncmp(trimmedInput, "setpath", 7) == 0) {
 		
 		} else if(strcmp(trimmedInput, "help") == 0) {

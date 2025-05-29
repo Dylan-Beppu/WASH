@@ -157,6 +157,8 @@ int main(int argc, char *argv[]) {
 
 		} else if(strncmp(trimmedInput, "./", 2) == 0) {
 			//TODO: check for redirection
+			//TODO: also lets args happen here
+			//TODO: ALSO ADD A THING SO THIS SHELL CANT RUN INSIDE ITSELF AGAIN AND AGAIN
 
 
 			// Extract the path to the application

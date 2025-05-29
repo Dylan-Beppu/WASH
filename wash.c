@@ -38,13 +38,6 @@ int main(int argc, char *argv[]) {
     }
 
 
-	if (setenv("PATH", "/bin", 1) != 0) {
-        perror("Error initializing PATH");
-        return 1;
-    }
-
-
-
 	// Variable initialization
 	char input[1024]; //input variable
 	char path[1024] = "/bin";  //path variable

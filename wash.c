@@ -4,7 +4,8 @@
 #include <unistd.h> //ignore error, linux library
 
 
-
+// Know this isent the best practice, but a lot of functions use path and need it updated
+char path[1024] = "/bin";  //path variable
 
 //use Doxygen for function comments
 
@@ -14,10 +15,84 @@
  * This function prints a simple help message to the console.
  */
 void PrintHelp(){
+	//TODO: Finish this out properly once everything is written up
 	printf("Im the help screen\n\n");
 }
 
 
+/**
+ * @brief Repeats what the user inputs when running the command
+ * 
+ * This function prints the users input to console.
+ */
+void Echo(char* input) {
+	char* message = input + 4; // ignore echo
+	while (*message == ' ') message++; // Ignore whitespace
+		
+	// Print the remaining message
+    printf("%s\n", message);
+}
+
+/**
+ * @brief Handles the CD command
+ * 
+ * This changes what directory the program is in.
+ */
+void ChangeDir(char* input) {
+	char *path = input + 2;
+	while (*path == ' ') path++; // Skip leading spaces
+
+	// Handle no input
+	if (strlen(path) == 0) {
+		const char *homeDir = getenv("HOME");
+		if (homeDir) {
+			// Set the path to home, handle error if present (does not work on windows)
+			if (chdir(homeDir) != 0) {
+				perror("cd");
+			}
+		} else {
+			printf("HOME environment variable not set.\n");
+		}
+	}
+
+	// Handle ".."
+	else if (strcmp(path, "..") == 0) {
+		// Set the path to parent folder, handle error if present
+		if (chdir("..") != 0) {
+			perror("cd");
+		}
+	}
+
+	// Handle other paths
+	else {
+		// Set the path to child path string, handle error if present
+		if (chdir(path) != 0) {
+			perror("cd");
+		}
+	}
+}
+
+void SetPath(char* input) {
+	char *pathArgs = input + 7;
+            while (*pathArgs == ' ') pathArgs++; // Skip leading spaces
+
+            // Check if at least one argument is provided
+            if (strlen(pathArgs) == 0) {
+                printf("Error: setpath requires at least one argument.\n");
+            } else {
+                // Update the local PATH variable
+                if (snprintf(path, sizeof(path), "%s", pathArgs) >= sizeof(path)) {
+                    printf("Error: PATH is too long.\n");
+                } else {
+                    printf("Path updated to: %s\n", path);
+                }
+            }
+}
+
+
+void PrintPath() {
+
+}
 
 
 
@@ -40,7 +115,6 @@ int main(int argc, char *argv[]) {
 
 	// Variable initialization
 	char input[1024]; //input variable
-	char path[1024] = "/bin";  //path variable
 
 	// Main cmd loop
 	while (1) {
@@ -79,66 +153,16 @@ int main(int argc, char *argv[]) {
 			return 0;
 
 		} else if(strncmp(trimmedInput, "echo", 4) == 0) {
-		    char *message = trimmedInput + 4; // ignore echo
-			while (*message == ' ') message++;
-			//TODO: check for redirection here
-			
-		    // Print the remaining message
-    		printf("%s\n", message);
+		    Echo(trimmedInput);
 			
 		} else if(strcmp(trimmedInput, "pwd") == 0) {
 			printf("%s\n", currWorkingDir); // Print the current working directory
 
 		} else if(strncmp(trimmedInput, "cd", 2) == 0) {
-			char *path = trimmedInput + 2;
-            while (*path == ' ') path++; // Skip leading spaces
-
-            // Handle no input 
-            if (strlen(path) == 0) {
-                const char *homeDir = getenv("HOME");
-                if (homeDir) {
-					//Set the path to home, handle error if present (does not work on windows)
-                    if (chdir(homeDir) != 0) {
-                        perror("cd");
-                    }
-                } else {
-                    printf("HOME environment variable not set.\n");
-                }
-            } 
-
-            // Handle ".." 
-            else if (strcmp(path, "..") == 0) {
-				//Set the path to parent folder, handle error if present
-                if (chdir("..") != 0) {
-					perror("cd");                    
-                }
-            } 
-	
-            // Handle other paths
-            else {
-				//Set the path to child path string, handle error if present
-                if (chdir(path) != 0) {
-                    perror("cd");
-                }
-            }
-			
-
+			ChangeDir(trimmedInput);
 
 		} else if(strncmp(trimmedInput, "setpath", 7) == 0) {
-            char *pathArgs = trimmedInput + 7;
-            while (*pathArgs == ' ') pathArgs++; // Skip leading spaces
-
-            // Check if at least one argument is provided
-            if (strlen(pathArgs) == 0) {
-                printf("Error: setpath requires at least one argument.\n");
-            } else {
-                // Update the local PATH variable
-                if (snprintf(path, sizeof(path), "%s", pathArgs) >= sizeof(path)) {
-                    printf("Error: PATH is too long.\n");
-                } else {
-                    printf("Path updated to: %s\n", path);
-                }
-            }
+            SetPath(trimmedInput);
 		
 		} else if(strcmp(trimmedInput, "$path") == 0) {
 			printf("Current PATH directories:\n");
@@ -154,6 +178,10 @@ int main(int argc, char *argv[]) {
 		
 		} else if(strcmp(trimmedInput, "help") == 0) {
 			PrintHelp();
+
+		} else if(strcmp(trimmedInput, "clear") == 0) {
+			system("clear");
+
 
 		} else if(strncmp(trimmedInput, "./", 2) == 0) {
 			//TODO: check for redirection

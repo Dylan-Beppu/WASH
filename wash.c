@@ -2,7 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h> //ignore error, linux library
-
+#include <sys/types.h>
+#include <sys/wait.h>
 
 // Know this isent the best practice, but a lot of functions use path and need it updated
 char path[1024] = "/bin";  //path variable
@@ -72,29 +73,170 @@ void ChangeDir(char* input) {
 	}
 }
 
+/**
+ * @brief Sets the PATH variable to a new value.
+ * 
+ * This function updates the local PATH variable with the provided input.
+ * It expects the input to start with "setpath ".
+ */
 void SetPath(char* input) {
 	char *pathArgs = input + 7;
-            while (*pathArgs == ' ') pathArgs++; // Skip leading spaces
+    while (*pathArgs == ' ') pathArgs++; // Skip leading spaces
 
-            // Check if at least one argument is provided
-            if (strlen(pathArgs) == 0) {
-                printf("Error: setpath requires at least one argument.\n");
-            } else {
-                // Update the local PATH variable
-                if (snprintf(path, sizeof(path), "%s", pathArgs) >= sizeof(path)) {
-                    printf("Error: PATH is too long.\n");
-                } else {
-                    printf("Path updated to: %s\n", path);
-                }
-            }
+    // Check if at least one argument is provided
+    if (strlen(pathArgs) == 0) {
+        printf("Error: setpath requires at least one argument.\n");
+    } else {
+        // Update the local PATH variable
+        if (snprintf(path, sizeof(path), "%s", pathArgs) >= sizeof(path)) {
+            printf("Error: PATH is too long.\n");
+        } else {
+            printf("Path updated to: %s\n", path);
+        }
+    }
 }
 
-
+/**
+ * @brief Prints the current PATH directories.
+ * 
+ * This function splits the PATH variable by spaces and prints each directory.
+ */
 void PrintPath() {
-
+    printf("Current PATH directories:\n");
+    char *pathCopy = strdup(path); // Create a copy of the path to avoid modifying the original
+    char *pathDir = strtok(pathCopy, " ");
+    while (pathDir != NULL) {
+        printf("- %s\n", pathDir);
+        pathDir = strtok(NULL, " ");
+    }
+    free(pathCopy); // Free the allocated memory
 }
 
 
+/**
+ * @brief Runs a program specified by the user.
+ * 
+ * This function executes a program located in the current directory or in the PATH directories.
+ * It forks a child process to run the program and waits for it to finish.
+ */
+void RunProgram(char* input){
+    // Extract the path to the application
+    char *appPath = input;
+    while (*appPath == ' ') appPath++; // Skip leading spaces
+
+    // Check if the file exists and is executable
+    if (access(appPath, X_OK) == 0) {
+
+        // Fork a child process
+        pid_t pid = fork();
+        if (pid == 0) {
+            // Child process: execute the application
+            char *args[] = {appPath, NULL}; // Arguments for the application
+            if (execvp(appPath, args) == -1) {
+                perror("Error running application");
+            }
+            exit(EXIT_FAILURE); // Exit child process if execvp fails
+        } else if (pid < 0) {
+            // Fork failed
+            perror("Fork failed");
+        } else {
+            // Parent process: wait for the child process to finish
+            int status;
+            if (waitpid(pid, &status, 0) == -1)
+            {
+                perror("Error waiting for child process");
+            }
+        }
+    } else{
+
+        // File does not exist or is not executable
+        perror("Error: File does not exist or is not executable");
+    }
+}
+
+/**
+ * @brief Handles searching the PATH directories and executing a program.
+ * 
+ * This function searches the directories in the PATH variable for the specified program
+ * and executes it if found.
+ */
+void HandlePath(char* input) {
+    // Extract the command name (first word of the input)
+    char *appName = strtok(input, " "); // Extract the application name
+    char *args = strtok(NULL, ""); // Extract the rest of the string as arguments
+
+    // Manually iterate through the path directories
+    char fullPath[1026];
+    int start = 0, end = 0;
+    int pathLen = strlen(path);
+    int found = 0;
+
+    for (int i = 0; i <= pathLen; i++) {
+        // Check for ' ' delimiter or end of string
+        if (path[i] == ' ' || path[i] == '\0') {
+            end = i;
+
+            // Extract the directory from the path
+            char dir[1024];
+            strncpy(dir, path + start, end - start);
+            dir[end - start] = '\0'; // Null-terminate the directory string
+
+            // Construct the full path to the executable
+            snprintf(fullPath, sizeof(fullPath), "%s/%s", dir, appName);
+
+            // Check if the file exists and is executable
+            if (access(fullPath, X_OK) == 0) {
+                // Fork a child process to execute the program
+                pid_t pid = fork();
+                if (pid == 0) {
+                    // Child process: execute the program
+                    char *execArgs[1024];
+                    int argIndex = 0;
+
+                    // Add the application name as the first argument
+                    execArgs[argIndex++] = fullPath;
+
+                    // Split the arguments and add them to the execArgs array
+                    if (args != NULL) {
+                        char *arg = strtok(args, " ");
+                        while (arg != NULL) {
+                            execArgs[argIndex++] = arg;
+                            arg = strtok(NULL, " ");
+                        }
+                    }
+
+                    // Null-terminate the arguments array
+                    execArgs[argIndex] = NULL;
+
+                    // Execute the program
+                    if (execvp(fullPath, execArgs) == -1) {
+                        perror("Error running program");
+                    }
+                    exit(EXIT_FAILURE); // Exit child process if execvp fails
+                } else if (pid < 0) {
+                    // Fork failed
+                    perror("Fork failed");
+                } else {
+                    // Parent process: wait for the child process to finish
+                    int status;
+                    if (waitpid(pid, &status, 0) == -1) {
+                        perror("Error waiting for child process");
+                    }
+                }
+                found = 1;
+                break; // Exit the loop once the program is executed
+            }
+
+            // Move to the next directory in the path
+            start = i + 1;
+        }
+    }
+
+    // If no executable was found, print an error message
+    if (!found) {
+        printf("Not a valid command: %s\n", input);
+    }
+}
 
 
 
@@ -124,8 +266,8 @@ int main(int argc, char *argv[]) {
 		//Get directory here so cd and running stuff is easer
 		getcwd(currWorkingDir, sizeof(currWorkingDir));
 
-		//TODO: remove eventualty
-		printf("%s>", currWorkingDir); // Prit here so i know where im at 
+		//TODO: remove eventually
+		printf("%s>", currWorkingDir); // Print here so i know where im at 
 
 
 
@@ -165,16 +307,7 @@ int main(int argc, char *argv[]) {
             SetPath(trimmedInput);
 		
 		} else if(strcmp(trimmedInput, "$path") == 0) {
-			printf("Current PATH directories:\n");
-            char *pathCopy = strdup(path); // Create a copy of the path to avoid modifying the original
-            char *pathDir = strtok(pathCopy, " ");
-            while (pathDir != NULL) {
-                printf("- %s\n", pathDir);
-                pathDir = strtok(NULL, " ");
-            }
-            free(pathCopy); // Free the allocated memory
-
-
+            PrintPath();
 		
 		} else if(strcmp(trimmedInput, "help") == 0) {
 			PrintHelp();
@@ -182,126 +315,12 @@ int main(int argc, char *argv[]) {
 		} else if(strcmp(trimmedInput, "clear") == 0) {
 			system("clear");
 
-
 		} else if(strncmp(trimmedInput, "./", 2) == 0) {
-			//TODO: check for redirection
-			//TODO: also lets args happen here
-			//TODO: ALSO ADD A THING SO THIS SHELL CANT RUN INSIDE ITSELF AGAIN AND AGAIN
-
-
-			// Extract the path to the application
-            char *appPath = trimmedInput;
-            while (*appPath == ' ') appPath++; // Skip leading spaces
-
-            // Check if the file exists and is executable
-            if (access(appPath, X_OK) == 0) {
-
-                // Fork a child process
-                pid_t pid = fork();
-                if (pid == 0) {
-                    // Child process: execute the application
-                    char *args[] = {appPath, NULL}; // Arguments for the application
-                    if (execvp(appPath, args) == -1) {
-                        perror("Error running application");
-                    }
-                    exit(EXIT_FAILURE); // Exit child process if execvp fails
-                } else if (pid < 0) {
-                    // Fork failed
-                    perror("Fork failed");
-                } else {
-                    // Parent process: wait for the child process to finish
-                    int status;
-                    if (waitpid(pid, &status, 0) == -1) {
-                        perror("Error waiting for child process");
-                    }
-                }
-            } else {
-
-
-				
-
-
-                // File does not exist or is not executable
-                perror("Error: File does not exist or is not executable");
-            }
+            RunProgram(trimmedInput);
 
 		} else {
-			// Extract the command name (first word of the input)
-            char *appName = strtok(trimmedInput, " "); // Extract the application name
-            char *args = strtok(NULL, ""); // Extract the rest of the string as arguments
-
-            // Manually iterate through the path directories
-            char fullPath[1024];
-            int start = 0, end = 0;
-            int pathLen = strlen(path);
-            int found = 0;
-
-            for (int i = 0; i <= pathLen; i++) {
-                // Check for ':' delimiter or end of string
-                if (path[i] == ' ' || path[i] == '\0') {
-                    end = i;
-
-                    // Extract the directory from the path
-                    char dir[1024];
-                    strncpy(dir, path + start, end - start);
-                    dir[end - start] = '\0'; // Null-terminate the directory string
-
-                    // Construct the full path to the executable
-                    snprintf(fullPath, sizeof(fullPath), "%s/%s", dir, appName);
-
-                    // Check if the file exists and is executable
-                    if (access(fullPath, X_OK) == 0) {
-                        // Fork a child process to execute the program
-                        pid_t pid = fork();
-                        if (pid == 0) {
-                            // Child process: execute the program
-                            char *execArgs[1024];
-                            int argIndex = 0;
-
-                            // Add the application name as the first argument
-                            execArgs[argIndex++] = fullPath;
-
-                            // Split the arguments and add them to the execArgs array
-                            if (args != NULL) {
-                                char *arg = strtok(args, " ");
-                                while (arg != NULL) {
-                                    execArgs[argIndex++] = arg;
-                                    arg = strtok(NULL, " ");
-                                }
-                            }
-
-                            // Null-terminate the arguments array
-                            execArgs[argIndex] = NULL;
-
-                            // Execute the program
-                            if (execvp(fullPath, execArgs) == -1) {
-                                perror("Error running program");
-                            }
-                            exit(EXIT_FAILURE); // Exit child process if execvp fails
-                        } else if (pid < 0) {
-                            // Fork failed
-                            perror("Fork failed");
-                        } else {
-                            // Parent process: wait for the child process to finish
-                            int status;
-                            if (waitpid(pid, &status, 0) == -1) {
-                                perror("Error waiting for child process");
-                            }
-                        }
-                        found = 1;
-                        break; // Exit the loop once the program is executed
-                    }
-
-                    // Move to the next directory in the path
-                    start = i + 1;
-                }
-            }
-
-            // If no executable was found, print an error message
-            if (!found) {
-                printf("Not a valid command: %s\n", trimmedInput);
-            }
-
+            HandlePath(trimmedInput);
+            
 		}
 		/*So wants for other stuff:
 			Clear

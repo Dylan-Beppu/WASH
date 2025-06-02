@@ -4,6 +4,7 @@
 #include <unistd.h> //ignore error, linux library
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <fcntl.h> // For open()
 
 // Know this isent the best practice, but a lot of functions use path and need it updated
 char path[1024] = "/bin";  //path variable
@@ -288,49 +289,89 @@ int main(int argc, char *argv[]) {
 		// printf("Raw  input: |%s|\n", input);
 		printf("\ttrim input: |%s|\n", trimmedInput);
 
+        // Check for redirection (">")
+        char *redirect = strchr(trimmedInput, '>');
+        int savedStdout = -1; // To store the original stdout
+        int redirectOutput = 0;
 
+        if (redirect != NULL) {
+            *redirect = '\0'; // Split the input at '>'
+            redirect++;       // Move to the filename part
+            while (*redirect == ' ') redirect++; // Skip leading spaces in the filename
 
-		//handle inputs
-		if (strcmp(trimmedInput, "exit") == 0) {
-			return 0;
+            if (strlen(redirect) == 0) {
+                printf("Error: No filename provided for redirection.\n");
+                continue;
+            }
 
-		} else if(strncmp(trimmedInput, "echo", 4) == 0) {
-		    Echo(trimmedInput);
-			
-		} else if(strcmp(trimmedInput, "pwd") == 0) {
-			printf("%s\n", currWorkingDir); // Print the current working directory
+            // Open the file for writing
+            int outputFile = open(redirect, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if (outputFile == -1) {
+                perror("Error opening file for redirection");
+                continue;
+            }
 
-		} else if(strncmp(trimmedInput, "cd", 2) == 0) {
-			ChangeDir(trimmedInput);
+            // Save the current stdout file descriptor
+            savedStdout = dup(STDOUT_FILENO);
+            if (savedStdout == -1) {
+                perror("Error saving stdout");
+                close(outputFile);
+                continue;
+            }
 
-		} else if(strncmp(trimmedInput, "setpath", 7) == 0) {
+            // Redirect stdout to the file
+            if (dup2(outputFile, STDOUT_FILENO) == -1) {
+                perror("Error redirecting stdout");
+                close(outputFile);
+                close(savedStdout);
+                continue;
+            }
+
+            redirectOutput = 1;
+            close(outputFile); // Close the file descriptor, as it's now duplicated
+        }
+
+        // Handle inputs
+        if (strcmp(trimmedInput, "exit") == 0) {
+            if (redirectOutput) {
+                dup2(savedStdout, STDOUT_FILENO); // Restore stdout
+                close(savedStdout);
+            }
+            return 0;
+
+        } else if (strncmp(trimmedInput, "echo", 4) == 0) {
+            Echo(trimmedInput);
+
+        } else if (strcmp(trimmedInput, "pwd") == 0) {
+            printf("%s\n", currWorkingDir); // Print the current working directory
+
+        } else if (strncmp(trimmedInput, "cd", 2) == 0) {
+            ChangeDir(trimmedInput);
+
+        } else if (strncmp(trimmedInput, "setpath", 7) == 0) {
             SetPath(trimmedInput);
-		
-		} else if(strcmp(trimmedInput, "$path") == 0) {
+
+        } else if (strcmp(trimmedInput, "$path") == 0) {
             PrintPath();
-		
-		} else if(strcmp(trimmedInput, "help") == 0) {
-			PrintHelp();
 
-		} else if(strcmp(trimmedInput, "clear") == 0) {
-			system("clear");
+        } else if (strcmp(trimmedInput, "help") == 0) {
+            PrintHelp();
 
-		} else if(strncmp(trimmedInput, "./", 2) == 0) {
+        } else if (strcmp(trimmedInput, "clear") == 0) {
+            system("clear");
+
+        } else if (strncmp(trimmedInput, "./", 2) == 0) {
             RunProgram(trimmedInput);
 
-		} else {
+        } else {
             HandlePath(trimmedInput);
-            
-		}
-		/*So wants for other stuff:
-			Clear
-			Date
-			Ls
-		*/
+        }
 
-
-
-		
+        // Restore stdout if it was redirected
+        if (redirectOutput) {
+            dup2(savedStdout, STDOUT_FILENO); // Restore stdout
+            close(savedStdout); // Close the saved file descriptor
+        }
 	}
 	
    

@@ -17,8 +17,22 @@ char path[1024] = "/bin";  //path variable
  * This function prints a simple help message to the console.
  */
 void PrintHelp(){
-	//TODO: Finish this out properly once everything is written up
-	printf("Im the help screen\n\n");
+    printf("WASH commands:");
+	printf("  help          - Displays this help screen with information about the program's usage.\n");
+    printf("  exit          - Exits the shell.\n\n");
+    printf("  pwd           - Prints the current working directory.\n");
+    printf("  cd <path>     - Changes the current directory to the specified path.\n");
+    printf("                  Use '..' to move to the parent directory.\n");
+    printf("                  If no path is provided, it changes to the home directory.\n");
+    printf("  head_nine <file> - Displays the first 9 lines of the specified file.\n\n");
+    printf("  setpath <path> - Sets the PATH variable to the specified value.\n");
+    printf("  $path          - Prints the current PATH variable (for debugging purposes).\n");
+    printf("  echo <message> - Prints the specified message to the console.\n\n");
+    printf("  ./<program>    - Executes a program located in the current directory.\n");
+    printf("  <program>      - Searches for the program in the directories specified in the PATH variable and executes it.\n\n");
+    printf(" <command> > <filename>   - Redirects the output of a command to a file.\n");
+    printf("                  Creates two files: <filename>.output for normal output and <filename>.error for errors.\n");
+    printf("                  If no filename is provided or multiple arguments are given, an error is displayed.\n\n");
 }
 
 
@@ -298,10 +312,6 @@ int main(int argc, char *argv[]) {
 		//Get directory here so cd and running stuff is easer
 		getcwd(currWorkingDir, sizeof(currWorkingDir));
 
-		//TODO: remove eventually
-		printf("%s>", currWorkingDir); // Print here so i know where im at 
-
-
 
 		// Handle input
         if (!fgets(input, sizeof(input), stdin)) {
@@ -316,11 +326,7 @@ int main(int argc, char *argv[]) {
         char *end = trimmedInput + strlen(trimmedInput) - 1;
         while (end > trimmedInput && *end == ' ') *end-- = '\0'; // Remove trailing spaces
 
-		//TODO: Remove eventually
-		// printf("Raw  input: |%s|\n", input);
-		printf("\ttrim input: |%s|\n", trimmedInput);
-
-         // Check for redirection (">")
+        // Check for redirection (">")
         char *redirect = strchr(trimmedInput, '>');
         if (redirect != NULL) {
             *redirect = '\0'; // Split the input at '>'
@@ -420,9 +426,6 @@ int main(int argc, char *argv[]) {
 
         } else if (strncmp(trimmedInput, "setpath", 7) == 0) {
             SetPath(trimmedInput);
-
-        } else if (strcmp(trimmedInput, "$path") == 0) { //TODO: remove
-            PrintPath();
 
         } else if (strcmp(trimmedInput, "help") == 0) {
             PrintHelp();

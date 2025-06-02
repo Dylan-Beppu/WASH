@@ -258,9 +258,12 @@ int main(int argc, char *argv[]) {
 
 	// Variable initialization
 	char input[1024]; //input variable
-
+  	int redirectOutput = 0; // Flag to indicate if output redirection is active
+    int savedStdout = -1;   // To store the original stdout file descriptor
+	
 	// Main cmd loop
 	while (1) {
+		
 		//variables inits
 		char currWorkingDir[1024];
 
@@ -289,11 +292,8 @@ int main(int argc, char *argv[]) {
 		// printf("Raw  input: |%s|\n", input);
 		printf("\ttrim input: |%s|\n", trimmedInput);
 
-        // Check for redirection (">")
+         // Check for redirection (">")
         char *redirect = strchr(trimmedInput, '>');
-        int savedStdout = -1; // To store the original stdout
-        int redirectOutput = 0;
-
         if (redirect != NULL) {
             *redirect = '\0'; // Split the input at '>'
             redirect++;       // Move to the filename part
@@ -327,9 +327,14 @@ int main(int argc, char *argv[]) {
                 continue;
             }
 
-            redirectOutput = 1;
             close(outputFile); // Close the file descriptor, as it's now duplicated
+            redirectOutput = 1; // Set the flag to indicate redirection is active
         }
+
+		// Trim trailing spaces from trimmedInput after removing redirection
+        char *endTrimmed = trimmedInput + strlen(trimmedInput) - 1;
+        while (endTrimmed > trimmedInput && *endTrimmed == ' ') *endTrimmed-- = '\0';
+
 
         // Handle inputs
         if (strcmp(trimmedInput, "exit") == 0) {
@@ -357,8 +362,7 @@ int main(int argc, char *argv[]) {
         } else if (strcmp(trimmedInput, "help") == 0) {
             PrintHelp();
 
-        } else if (strcmp(trimmedInput, "clear") == 0) {
-            system("clear");
+		} else if (strcmp(trimmedInput, "date") == 0) {
 
         } else if (strncmp(trimmedInput, "./", 2) == 0) {
             RunProgram(trimmedInput);
@@ -367,10 +371,13 @@ int main(int argc, char *argv[]) {
             HandlePath(trimmedInput);
         }
 
+
         // Restore stdout if it was redirected
         if (redirectOutput) {
             dup2(savedStdout, STDOUT_FILENO); // Restore stdout
             close(savedStdout); // Close the saved file descriptor
+            redirectOutput = 0; // Reset the redirection flag
+            savedStdout = -1; // Reset savedStdout
         }
 	}
 	

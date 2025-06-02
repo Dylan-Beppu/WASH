@@ -239,7 +239,35 @@ void HandlePath(char* input) {
     }
 }
 
+/**
+ * @brief Displays the first 9 lines of a file.
+ * 
+ * This function reads a file line by line and prints the first 9 lines to the console.
+ * If the file cannot be opened, it prints an error message.
+ */
+void HeadNine(char* input) {
+    // Extract the filename from the input
+    char *filename = input + 9; // Skip "head_nine"
+    while (*filename == ' ') filename++; // Skip leading spaces
 
+    // Open the file for reading
+    FILE *file = fopen(filename, "r");
+    if (file == NULL) {
+        perror("Error opening file");
+        return;
+    }
+
+    // Read and print the first 9 lines
+    char line[1024];
+    int lineCount = 0;
+    while (fgets(line, sizeof(line), file) != NULL && lineCount < 9) {
+        printf("%s", line);
+        lineCount++;
+    }
+
+    // Close the file
+    fclose(file);
+}
 
 
 int main(int argc, char *argv[]) {
@@ -299,35 +327,72 @@ int main(int argc, char *argv[]) {
             redirect++;       // Move to the filename part
             while (*redirect == ' ') redirect++; // Skip leading spaces in the filename
 
+            // Check for missing filename
             if (strlen(redirect) == 0) {
                 printf("Error: No filename provided for redirection.\n");
                 continue;
             }
 
-            // Open the file for writing
-            int outputFile = open(redirect, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-            if (outputFile == -1) {
-                perror("Error opening file for redirection");
+            // Check for multiple arguments after the filename
+            char *extraArgs = strchr(redirect, ' ');
+            if (extraArgs != NULL) {
+                printf("Error: Multiple arguments provided for redirection. Only one filename is allowed.\n");
                 continue;
             }
 
-            // Save the current stdout file descriptor
-            savedStdout = dup(STDOUT_FILENO);
-            if (savedStdout == -1) {
-                perror("Error saving stdout");
+            // Create filenames for output and error files
+            char outputFileName[1024];
+            char errorFileName[1024];
+            snprintf(outputFileName, sizeof(outputFileName), "%s.output", redirect);
+            snprintf(errorFileName, sizeof(errorFileName), "%s.error", redirect);
+
+            // Open the output file for writing
+            int outputFile = open(outputFileName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if (outputFile == -1) {
+                perror("Error opening output file for redirection");
+                continue;
+            }
+
+            // Open the error file for writing
+            int errorFile = open(errorFileName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if (errorFile == -1) {
+                perror("Error opening error file for redirection");
                 close(outputFile);
                 continue;
             }
 
-            // Redirect stdout to the file
+            // Save the current stdout and stderr file descriptors
+            savedStdout = dup(STDOUT_FILENO);
+            int savedStderr = dup(STDERR_FILENO);
+            if (savedStdout == -1 || savedStderr == -1) {
+                perror("Error saving stdout or stderr");
+                close(outputFile);
+                close(errorFile);
+                continue;
+            }
+
+            // Redirect stdout to the output file
             if (dup2(outputFile, STDOUT_FILENO) == -1) {
                 perror("Error redirecting stdout");
                 close(outputFile);
+                close(errorFile);
                 close(savedStdout);
+                close(savedStderr);
                 continue;
             }
 
-            close(outputFile); // Close the file descriptor, as it's now duplicated
+            // Redirect stderr to the error file
+            if (dup2(errorFile, STDERR_FILENO) == -1) {
+                perror("Error redirecting stderr");
+                close(outputFile);
+                close(errorFile);
+                close(savedStdout);
+                close(savedStderr);
+                continue;
+            }
+
+            close(outputFile); // Close the output file descriptor, as it's now duplicated
+            close(errorFile);  // Close the error file descriptor, as it's now duplicated
             redirectOutput = 1; // Set the flag to indicate redirection is active
         }
 
@@ -356,14 +421,15 @@ int main(int argc, char *argv[]) {
         } else if (strncmp(trimmedInput, "setpath", 7) == 0) {
             SetPath(trimmedInput);
 
-        } else if (strcmp(trimmedInput, "$path") == 0) {
+        } else if (strcmp(trimmedInput, "$path") == 0) { //TODO: remove
             PrintPath();
 
         } else if (strcmp(trimmedInput, "help") == 0) {
             PrintHelp();
-
-		} else if (strcmp(trimmedInput, "date") == 0) {
-
+		
+		} else if (strncmp(trimmedInput, "head_nine", 9) == 0) {
+            HeadNine(trimmedInput);
+			
         } else if (strncmp(trimmedInput, "./", 2) == 0) {
             RunProgram(trimmedInput);
 

@@ -1,4 +1,0 @@
-Hello, World!
-/mnt/c/Users/Dylan Beppu/Documents/GitHub/WASH>	trim input: ||
-Not a valid command: 
-/mnt/c/Users/Dylan Beppu/Documents/GitHub/WASH>

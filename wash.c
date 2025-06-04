@@ -12,11 +12,18 @@ char path[1024] = "/bin";  //path variable
 //use Doxygen for function comments
 
 /**
- * @brief Displays the help screen with information about the program's usage.
+ * @brief Displays the help screen with information about the program's usage.s
  * 
  * This function prints a simple help message to the console.
  */
 void PrintHelp(){
+	/*
+       This call to printf writes the extracted message to the standard output (console).
+       The argument is the message string, which is printed as-is. printf returns the 
+       number of characters written, or a negative value if an error occurs. No explicit 
+       error handling is implemented here, as printf errors are rare in this context.
+	   Im not rewriting this for all printf so this is it for the printf IO systemcall
+    */
     printf("WASH commands:");
 	printf("  help          - Displays this help screen with information about the program's usage.\n");
     printf("  exit          - Exits the shell.\n\n");
@@ -60,9 +67,20 @@ void ChangeDir(char* input) {
 
 	// Handle no input
 	if (strlen(path) == 0) {
+		/*
+           This call to getenv retrieves the value of the "HOME" environment variable.
+           The argument is the name of the environment variable ("HOME"). It returns 
+           a pointer to the value string, or NULL if the variable is not set. If NULL 
+           is returned, an error message is printed to inform the user.
+        */
 		const char *homeDir = getenv("HOME");
 		if (homeDir) {
-			// Set the path to home, handle error if present (does not work on windows)
+			/*
+               This call to chdir changes the current working directory to the path 
+               specified by `homeDir`. It returns 0 on success or -1 on failure. If -1 
+               is returned, an error message is printed using perror, and the directory 
+               remains unchanged. (does not work on windows)
+            */ 
 			if (chdir(homeDir) != 0) {
 				perror("cd");
 			}
@@ -73,7 +91,11 @@ void ChangeDir(char* input) {
 
 	// Handle ".."
 	else if (strcmp(path, "..") == 0) {
-		// Set the path to parent folder, handle error if present
+		/*
+           This call to chdir changes the current working directory to the parent 
+           directory (".."). It returns 0 on success or -1 on failure. If -1 is returned, 
+           an error message is printed using perror, and the directory remains unchanged.
+        */
 		if (chdir("..") != 0) {
 			perror("cd");
 		}
@@ -81,7 +103,12 @@ void ChangeDir(char* input) {
 
 	// Handle other paths
 	else {
-		// Set the path to child path string, handle error if present
+		/*
+           This call to chdir changes the current working directory to the path 
+           specified by `path`. It returns 0 on success or -1 on failure. If -1 is 
+           returned, an error message is printed using perror, and the directory 
+           remains unchanged.
+        */
 		if (chdir(path) != 0) {
 			perror("cd");
 		}
@@ -102,7 +129,7 @@ void SetPath(char* input) {
     if (strlen(pathArgs) == 0) {
         printf("Error: setpath requires at least one argument.\n");
     } else {
-        // Update the local PATH variable
+        // Update the global PATH variable
         if (snprintf(path, sizeof(path), "%s", pathArgs) >= sizeof(path)) {
             printf("Error: PATH is too long.\n");
         } else {
@@ -139,26 +166,60 @@ void RunProgram(char* input){
     char *appPath = input;
     while (*appPath == ' ') appPath++; // Skip leading spaces
 
-    // Check if the file exists and is executable
+	/*
+       This call to access checks whether the file specified by `appPath` 
+       exists and is executable. The first argument is the file path, and 
+       the second argument is the mode to check (X_OK means executable). 
+       It returns 0 if the file is accessible, or -1 if not. If -1 is 
+       returned, an error message is printed using perror.
+    */
     if (access(appPath, X_OK) == 0) {
 
-        // Fork a child process
+        /*
+           This call to fork creates a new process. It returns the process ID 
+           of the child process to the parent, 0 to the child process, or -1 
+           if the operation failed. If -1 is returned, an error message is 
+           printed using perror, and the parent process continues without 
+           executing the child process.
+        */
         pid_t pid = fork();
         if (pid == 0) {
             // Child process: execute the application
             char *args[] = {appPath, NULL}; // Arguments for the application
+
+			/*
+               This call to execvp replaces the current process image with a new 
+               process image specified by `appPath`. The first argument is the 
+               program name, and the second argument is an array of arguments 
+               passed to the program. If the operation fails, it returns -1, and 
+               an error message is printed using perror. The child process exits 
+               immediately after the failure.
+            */
             if (execvp(appPath, args) == -1) {
                 perror("Error running application");
             }
+
+			/*
+               This call to exit terminates the child process. The argument 
+               `EXIT_FAILURE` indicates that the process exited due to an error.
+            */
             exit(EXIT_FAILURE); // Exit child process if execvp fails
+
         } else if (pid < 0) {
             // Fork failed
             perror("Fork failed");
         } else {
             // Parent process: wait for the child process to finish
             int status;
-            if (waitpid(pid, &status, 0) == -1)
-            {
+
+			/*
+               This call to waitpid waits for the child process specified by `pid` 
+               to terminate. The first argument is the process ID of the child, 
+               the second argument is a pointer to store the exit status, and the 
+               third argument is 0 (no special options). If the operation fails, 
+               it returns -1, and an error message is printed using perror.
+            */
+            if (waitpid(pid, &status, 0) == -1) {
                 perror("Error waiting for child process");
             }
         }
@@ -199,9 +260,21 @@ void HandlePath(char* input) {
             // Construct the full path to the executable
             snprintf(fullPath, sizeof(fullPath), "%s/%s", dir, appName);
 
-            // Check if the file exists and is executable
+            /*
+               This call to access checks whether the file specified by `fullPath` 
+               exists and is executable. The first argument is the file path, and 
+               the second argument is the mode to check (X_OK means executable). 
+               It returns 0 if the file is accessible, or -1 if not. If -1 is 
+               returned, the loop continues to the next directory.
+            */
             if (access(fullPath, X_OK) == 0) {
-                // Fork a child process to execute the program
+				/*
+                   This call to fork creates a new process. It returns the process ID 
+                   of the child process to the parent, 0 to the child process, or -1 
+                   if the operation failed. If -1 is returned, an error message is 
+                   printed using perror, and the parent process continues without 
+                   executing the child process.
+                */
                 pid_t pid = fork();
                 if (pid == 0) {
                     // Child process: execute the program
@@ -223,17 +296,38 @@ void HandlePath(char* input) {
                     // Null-terminate the arguments array
                     execArgs[argIndex] = NULL;
 
-                    // Execute the program
+                    /*
+                       This call to execvp replaces the current process image with a new 
+                       process image specified by `fullPath`. The first argument is the 
+                       program name, and the second argument is an array of arguments 
+                       passed to the program. If the operation fails, it returns -1, and 
+                       an error message is printed using perror. The child process exits 
+                       immediately after the failure.
+                    */
                     if (execvp(fullPath, execArgs) == -1) {
                         perror("Error running program");
                     }
+
+					/*
+                       This call to exit terminates the child process. The argument 
+                       `EXIT_FAILURE` indicates that the process exited due to an error.
+                    */
                     exit(EXIT_FAILURE); // Exit child process if execvp fails
+
                 } else if (pid < 0) {
                     // Fork failed
                     perror("Fork failed");
                 } else {
                     // Parent process: wait for the child process to finish
                     int status;
+
+					/*
+                       This call to waitpid waits for the child process specified by `pid` 
+                       to terminate. The first argument is the process ID of the child, 
+                       the second argument is a pointer to store the exit status, and the 
+                       third argument is 0 (no special options). If the operation fails, 
+                       it returns -1, and an error message is printed using perror.
+                    */
                     if (waitpid(pid, &status, 0) == -1) {
                         perror("Error waiting for child process");
                     }
@@ -264,7 +358,14 @@ void HeadNine(char* input) {
     char *filename = input + 9; // Skip "head_nine"
     while (*filename == ' ') filename++; // Skip leading spaces
 
-    // Open the file for reading
+    /*
+		This call to fopen takes the path to a file to open 
+   		(the argument is `filename`, extracted from the user's input),
+		followed by the access mode ("r" means read-only). fopen returns 
+		a FILE pointer representing the open file, or NULL if the 
+		operation failed. If NULL is returned, an error message is 
+		printed using perror, and the function exits early.
+	*/
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
         perror("Error opening file");
@@ -274,12 +375,25 @@ void HeadNine(char* input) {
     // Read and print the first 9 lines
     char line[1024];
     int lineCount = 0;
+
+	/*
+       This call to fgets reads a line from the file specified by `file` 
+       into the buffer `line`. The first argument is the buffer to store 
+       the line, the second argument is the size of the buffer, and the 
+       third argument is the FILE pointer. It returns the buffer on success 
+       or NULL on failure or EOF. The loop continues until EOF or the 
+       specified number of lines is read.
+    */
     while (fgets(line, sizeof(line), file) != NULL && lineCount < 9) {
         printf("%s", line);
         lineCount++;
     }
 
-    // Close the file
+    /*
+       This call to fclose closes the file specified by `file`. The argument 
+       is the FILE pointer returned by fopen. It returns 0 on success or EOF 
+       on failure. No explicit error handling is implemented here.
+    */
     fclose(file);
 }
 
@@ -309,7 +423,13 @@ int main(int argc, char *argv[]) {
 		//variables inits
 		char currWorkingDir[1024];
 
-		//Get directory here so cd and running stuff is easer
+		/*
+           This call to getcwd retrieves the current working directory 
+           and stores it in the `currWorkingDir` buffer. The first argument 
+           is the buffer to store the directory path, and the second argument 
+           is the size of the buffer. If the operation fails, it returns NULL, 
+           but no explicit error handling is implemented here.
+        */
 		getcwd(currWorkingDir, sizeof(currWorkingDir));
 
 
@@ -352,15 +472,26 @@ int main(int argc, char *argv[]) {
             snprintf(outputFileName, sizeof(outputFileName), "%s.output", redirect);
             snprintf(errorFileName, sizeof(errorFileName), "%s.error", redirect);
 
-            // Open the output file for writing
+            /*
+               This call to open creates or truncates the file specified by 
+               `outputFileName` or `errorFileName` for writing. The first argument 
+               is the file path, the second argument specifies the access mode 
+               (O_WRONLY | O_CREAT | O_TRUNC means write-only, create if it doesn't 
+               exist, and truncate if it does), and the third argument specifies 
+               the file permissions (0644 means read/write for owner, read-only 
+               for others). It returns a file descriptor, or -1 if the operation 
+               failed. If -1 is returned, an error message is printed using perror.
+            */
             int outputFile = open(outputFileName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            int errorFile = open(errorFileName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+
+            // Open the output file for writing
             if (outputFile == -1) {
                 perror("Error opening output file for redirection");
                 continue;
             }
 
             // Open the error file for writing
-            int errorFile = open(errorFileName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
             if (errorFile == -1) {
                 perror("Error opening error file for redirection");
                 close(outputFile);
@@ -377,7 +508,12 @@ int main(int argc, char *argv[]) {
                 continue;
             }
 
-            // Redirect stdout to the output file
+			/*
+   				This call to dup duplicates the file descriptor specified by 
+   				STDOUT_FILENO (standard output). It returns a new file descriptor, 
+				or -1 if the operation failed. If -1 is returned, an error message
+				is printed using perror, and the program continues without redirection.
+			*/
             if (dup2(outputFile, STDOUT_FILENO) == -1) {
                 perror("Error redirecting stdout");
                 close(outputFile);
@@ -387,7 +523,12 @@ int main(int argc, char *argv[]) {
                 continue;
             }
 
-            // Redirect stderr to the error file
+			/*
+   				This call to dup duplicates the file descriptor specified by 
+   				STDERR_FILENO (standard error). It returns a new file descriptor,
+				or -1 if the operation failed. If -1 is returned, an error message
+				is printed using perror, and the program continues without redirection.
+			*/
             if (dup2(errorFile, STDERR_FILENO) == -1) {
                 perror("Error redirecting stderr");
                 close(outputFile);

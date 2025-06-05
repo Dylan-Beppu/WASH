@@ -5,6 +5,13 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h> // For open()
+// #include "head_nine.c"
+
+
+// Declare external functions from head_nine.c
+void print_usage();
+void HeadNine(int argc, char *argv[]);
+
 
 // Know this isent the best practice, but a lot of functions use path and need it updated
 char path[1024] = "/bin";  //path variable
@@ -347,56 +354,6 @@ void HandlePath(char* input) {
     }
 }
 
-/**
- * @brief Displays the first 9 lines of a file.
- * 
- * This function reads a file line by line and prints the first 9 lines to the console.
- * If the file cannot be opened, it prints an error message.
- */
-void HeadNine(char* input) {
-    // Extract the filename from the input
-    char *filename = input + 9; // Skip "head_nine"
-    while (*filename == ' ') filename++; // Skip leading spaces
-
-    /*
-		This call to fopen takes the path to a file to open 
-   		(the argument is `filename`, extracted from the user's input),
-		followed by the access mode ("r" means read-only). fopen returns 
-		a FILE pointer representing the open file, or NULL if the 
-		operation failed. If NULL is returned, an error message is 
-		printed using perror, and the function exits early.
-	*/
-    FILE *file = fopen(filename, "r");
-    if (file == NULL) {
-        perror("Error opening file");
-        return;
-    }
-
-    // Read and print the first 9 lines
-    char line[1024];
-    int lineCount = 0;
-
-	/*
-       This call to fgets reads a line from the file specified by `file` 
-       into the buffer `line`. The first argument is the buffer to store 
-       the line, the second argument is the size of the buffer, and the 
-       third argument is the FILE pointer. It returns the buffer on success 
-       or NULL on failure or EOF. The loop continues until EOF or the 
-       specified number of lines is read.
-    */
-    while (fgets(line, sizeof(line), file) != NULL && lineCount < 9) {
-        printf("%s", line);
-        lineCount++;
-    }
-
-    /*
-       This call to fclose closes the file specified by `file`. The argument 
-       is the FILE pointer returned by fopen. It returns 0 on success or EOF 
-       on failure. No explicit error handling is implemented here.
-    */
-    fclose(file);
-}
-
 
 int main(int argc, char *argv[]) {
     
@@ -573,7 +530,22 @@ int main(int argc, char *argv[]) {
             PrintHelp();
 		
 		} else if (strncmp(trimmedInput, "head_nine", 9) == 0) {
-            HeadNine(trimmedInput);
+
+			// Prepare arguments for HeadNine
+    		char *args[1024]; // Array to hold arguments
+    		int argCount = 0;
+
+    		// Tokenize the input string starting after "head_nine"
+		    char *token = strtok(trimmedInput + 9, " ");
+    		while (token != NULL) {
+        		args[argCount++] = token; // Add token to args array
+        		token = strtok(NULL, " "); // Get the next token
+    		}
+
+    		args[argCount] = NULL; // Null-terminate the arguments array
+
+    		// Call the function from head_nine.c
+    		HeadNine(argCount, args);
 			
         } else if (strncmp(trimmedInput, "./", 2) == 0) {
             RunProgram(trimmedInput);

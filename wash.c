@@ -62,11 +62,11 @@ void Echo(char* input) {
  * This changes what directory the program is in.
  */
 void ChangeDir(char* input) {
-	char *path = input + 2;
-	while (*path == ' ') path++; // Skip leading spaces
+	char *dir = input + 2;
+	while (*dir == ' ') dir++; // Skip leading spaces
 
 	// Handle no input
-	if (strlen(path) == 0) {
+	if (strlen(dir) == 0) {
 		/*
            This call to getenv retrieves the value of the "HOME" environment variable.
            The argument is the name of the environment variable ("HOME"). It returns 
@@ -90,7 +90,7 @@ void ChangeDir(char* input) {
 	}
 
 	// Handle ".."
-	else if (strcmp(path, "..") == 0) {
+	else if (strcmp(dir, "..") == 0) {
 		/*
            This call to chdir changes the current working directory to the parent 
            directory (".."). It returns 0 on success or -1 on failure. If -1 is returned, 
@@ -109,7 +109,7 @@ void ChangeDir(char* input) {
            returned, an error message is printed using perror, and the directory 
            remains unchanged.
         */
-		if (chdir(path) != 0) {
+		if (chdir(dir) != 0) {
 			perror("cd");
 		}
 	}

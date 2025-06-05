@@ -410,7 +410,7 @@ int main(int argc, char *argv[]) {
         char *redirect = strchr(trimmedInput, '>');
         if (redirect != NULL) {
 
-			printf("still reidirectin\n");
+			// printf("still reidirectin\n");
 
             *redirect = '\0'; // Split the input at '>'
             redirect++;       // Move to the filename part
@@ -570,7 +570,7 @@ int main(int argc, char *argv[]) {
         	close(savedStdout); // Close the saved file descriptor
             close(savedStderr);
 
-			printf("Im here\n");
+			// printf("Im here\n");
 			
 			redirectOutput = 0; // Reset the redirection flag
             savedStdout = -1; // Reset savedStdout

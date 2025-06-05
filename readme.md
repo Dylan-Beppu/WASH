@@ -24,6 +24,8 @@ Run instructions:
 If using input redirection on wsl, use a utility such as dos2unix to convert the file to the program can run.
 Usage `dos2unix <file>`
 
+If trying to use the `man` command on linux, use `man -l readme.md`
+
 ## Flags
 `-h` Displays the built in commands for wash then exits
 

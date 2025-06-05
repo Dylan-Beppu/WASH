@@ -1,3 +1,10 @@
+/**
+ * Dylan Beppu
+ * CSC 3350
+ * Seattle Pacific University
+ * Professor Andy Cameron
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

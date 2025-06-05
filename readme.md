@@ -16,7 +16,7 @@ This shell program is a extra credit assignment for CSC 3350. The point of this 
 ## Build & Run
 
 Build instructors:  
-`gcc ./wash.c -o WASH`
+`gcc wash.c head_nine.c -o WASH`
 
 Run instructions:  
 `./WASH`
@@ -38,7 +38,7 @@ Usage `dos2unix <file>`
 
 `cd <path>` - Changes the current directory to the specified path. Use '..' to move to the parent directory. If no path is provided, it changes to the home directory.
 
-`head_nine <file>` - Displays the first 9 lines of the specified file.
+`head_nine <flags>` - Displays the first 9 lines of the specified file. 
 
 `setpath <path>` - Sets the PATH variable to the specified value.
 

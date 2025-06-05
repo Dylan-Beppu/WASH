@@ -373,7 +373,8 @@ int main(int argc, char *argv[]) {
 	char input[1024]; //input variable
   	int redirectOutput = 0; // Flag to indicate if output redirection is active
     int savedStdout = -1;   // To store the original stdout file descriptor
-	
+	int savedStderr = -1;
+
 	// Main cmd loop
 	while (1) {
 		
@@ -403,9 +404,14 @@ int main(int argc, char *argv[]) {
         char *end = trimmedInput + strlen(trimmedInput) - 1;
         while (end > trimmedInput && *end == ' ') *end-- = '\0'; // Remove trailing spaces
 
+
+
         // Check for redirection (">")
         char *redirect = strchr(trimmedInput, '>');
         if (redirect != NULL) {
+
+			printf("still reidirectin\n");
+
             *redirect = '\0'; // Split the input at '>'
             redirect++;       // Move to the filename part
             while (*redirect == ' ') redirect++; // Skip leading spaces in the filename
@@ -445,19 +451,20 @@ int main(int argc, char *argv[]) {
             // Open the output file for writing
             if (outputFile == -1) {
                 perror("Error opening output file for redirection");
+				close(outputFile);
                 continue;
             }
 
             // Open the error file for writing
             if (errorFile == -1) {
                 perror("Error opening error file for redirection");
-                close(outputFile);
+                close(errorFile);
                 continue;
             }
 
             // Save the current stdout and stderr file descriptors
             savedStdout = dup(STDOUT_FILENO);
-            int savedStderr = dup(STDERR_FILENO);
+            savedStderr = dup(STDERR_FILENO);
             if (savedStdout == -1 || savedStderr == -1) {
                 perror("Error saving stdout or stderr");
                 close(outputFile);
@@ -557,11 +564,18 @@ int main(int argc, char *argv[]) {
 
         // Restore stdout if it was redirected
         if (redirectOutput) {
+
             dup2(savedStdout, STDOUT_FILENO); // Restore stdout
-            close(savedStdout); // Close the saved file descriptor
-            redirectOutput = 0; // Reset the redirection flag
+			dup2(savedStderr, STDERR_FILENO);
+        	close(savedStdout); // Close the saved file descriptor
+            close(savedStderr);
+
+			printf("Im here\n");
+			
+			redirectOutput = 0; // Reset the redirection flag
             savedStdout = -1; // Reset savedStdout
         }
+		redirect =  NULL;
 	}
 	
    

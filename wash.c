@@ -547,6 +547,7 @@ int main(int argc, char *argv[]) {
         char *endTrimmed = trimmedInput + strlen(trimmedInput) - 1;
         while (endTrimmed > trimmedInput && *endTrimmed == ' ') *endTrimmed-- = '\0';
 
+		// printf("%s", trimmedInput);
 
         // Handle inputs
         if (strcmp(trimmedInput, "exit") == 0) {

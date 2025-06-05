@@ -2,7 +2,7 @@
 Dylan Beppu  
 CSC 3350  
 Seattle Pacific University  
-Dr. Andy Cameron
+Professor Andy Cameron
 
 ## About
 This shell program is a extra credit assignment for CSC 3350. The point of this is to show how shell works and 
@@ -21,6 +21,8 @@ Build instructors:
 Run instructions:  
 `./WASH`
 
+If using input redirection on wsl, use a utility such as dos2unix to convert the file to the program can run.
+Usage `dos2unix <file>`
 
 ## Flags
 `-h` Displays the built in commands for wash then exits

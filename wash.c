@@ -355,6 +355,97 @@ void HandlePath(char* input) {
 }
 
 
+// Function to handle redirection setup
+int HandleRedirection(char *redirect, int *savedStdout, int *savedStderr, int *redirectOutput) {
+    // Create filenames for output and error files
+    char outputFileName[1024];
+    char errorFileName[1024];
+    snprintf(outputFileName, sizeof(outputFileName), "%s.output", redirect);
+    snprintf(errorFileName, sizeof(errorFileName), "%s.error", redirect);
+
+	/*
+       This call to open creates or truncates the file specified by `outputFileName` 
+       and `errorFileName`. The first argument is the file path, the second argument 
+       specifies the access mode (write-only, create, truncate), and the third argument 
+       sets the file permissions. It returns a file descriptor on success or -1 on failure. 
+       If -1 is returned, an error message is printed using perror, and the function exits.
+    */
+    int outputFile = open(outputFileName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    int errorFile = open(errorFileName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+
+    if (outputFile == -1 || errorFile == -1) {
+        perror("Error opening files for redirection");
+        if (outputFile != -1) close(outputFile);
+        if (errorFile != -1) close(errorFile);
+        return -1; // Return error
+    }
+
+	/*
+       This call to dup duplicates the file descriptor for `STDOUT_FILENO` and `STDERR_FILENO`. 
+       The duplicated file descriptor is stored in `savedStdout` and `savedStderr`. It returns 
+       the new file descriptor on success or -1 on failure. If -1 is returned, an error message 
+       is printed using perror, and the function exits.
+    */    
+	*savedStdout = dup(STDOUT_FILENO);
+    *savedStderr = dup(STDERR_FILENO);
+    if (*savedStdout == -1 || *savedStderr == -1) {
+        perror("Error saving stdout or stderr");
+        close(outputFile);
+        close(errorFile);
+        return -1; // Return error
+    }
+
+	/*
+       This call to dup2 redirects `STDOUT_FILENO` and `STDERR_FILENO` to the file descriptors 
+       for `outputFile` and `errorFile`. It returns 0 on success or -1 on failure. If -1 is 
+       returned, an error message is printed using perror, and the function exits.
+    */
+    if (dup2(outputFile, STDOUT_FILENO) == -1 || dup2(errorFile, STDERR_FILENO) == -1) {
+        perror("Error redirecting output");
+        close(outputFile);
+        close(errorFile);
+        close(*savedStdout);
+        close(*savedStderr);
+        return -1; // Return error
+    }
+
+    close(outputFile); // Close the output file descriptor
+    close(errorFile);  // Close the error file descriptor
+    *redirectOutput = 1; // Set the flag to indicate redirection is active
+    return 0; // Success
+}
+
+
+
+// Function to restore redirection
+void RestoreRedirection(int *savedStdout, int *savedStderr, int *redirectOutput) {
+    if (*redirectOutput) {
+		/*
+           This call to dup2 restores `STDOUT_FILENO` and `STDERR_FILENO` to their original 
+           file descriptors stored in `savedStdout` and `savedStderr`. It returns 0 on success 
+           or -1 on failure. If -1 is returned, an esrror message is printed using perror.
+        */
+        dup2(*savedStdout, STDOUT_FILENO); // Restore stdout
+        dup2(*savedStderr, STDERR_FILENO); // Restore stderr
+
+		/*
+           This call to close closes the file descriptors for `savedStdout` and `savedStderr`. 
+           It releases the resources associated with these file descriptors. If the operation 
+           fails, an error message is printed using perror.
+        */
+        close(*savedStdout); // Close saved stdout descriptor
+        close(*savedStderr); // Close saved stderr descriptor
+        *redirectOutput = 0; // Reset the redirection flag
+        *savedStdout = -1; // Reset savedStdout
+        *savedStderr = -1; // Reset savedStderr
+    }
+}
+
+
+
+
+
+
 int main(int argc, char *argv[]) {
     
 	// Check for args
@@ -398,7 +489,7 @@ int main(int argc, char *argv[]) {
 		
 
         // Remove trailing newline character and handle leading/trailing spaces
-        input[strcspn(input, "\n")] = '\0';
+		input[strcspn(input, "\n")] = '\0';
         char *trimmedInput = input;
         while (*trimmedInput == ' ') trimmedInput++; // Skip leading spaces
         char *end = trimmedInput + strlen(trimmedInput) - 1;
@@ -409,9 +500,6 @@ int main(int argc, char *argv[]) {
         // Check for redirection (">")
         char *redirect = strchr(trimmedInput, '>');
         if (redirect != NULL) {
-
-			// printf("still reidirectin\n");
-
             *redirect = '\0'; // Split the input at '>'
             redirect++;       // Move to the filename part
             while (*redirect == ' ') redirect++; // Skip leading spaces in the filename
@@ -422,90 +510,12 @@ int main(int argc, char *argv[]) {
                 continue;
             }
 
-            // Check for multiple arguments after the filename
-            char *extraArgs = strchr(redirect, ' ');
-            if (extraArgs != NULL) {
-                printf("Error: Multiple arguments provided for redirection. Only one filename is allowed.\n");
-                continue;
+            // Handle redirection setup
+            if (HandleRedirection(redirect, &savedStdout, &savedStderr, &redirectOutput) == -1) {
+                continue; // Skip to the next iteration on error
             }
-
-            // Create filenames for output and error files
-            char outputFileName[1024];
-            char errorFileName[1024];
-            snprintf(outputFileName, sizeof(outputFileName), "%s.output", redirect);
-            snprintf(errorFileName, sizeof(errorFileName), "%s.error", redirect);
-
-            /*
-               This call to open creates or truncates the file specified by 
-               `outputFileName` or `errorFileName` for writing. The first argument 
-               is the file path, the second argument specifies the access mode 
-               (O_WRONLY | O_CREAT | O_TRUNC means write-only, create if it doesn't 
-               exist, and truncate if it does), and the third argument specifies 
-               the file permissions (0644 means read/write for owner, read-only 
-               for others). It returns a file descriptor, or -1 if the operation 
-               failed. If -1 is returned, an error message is printed using perror.
-            */
-            int outputFile = open(outputFileName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-            int errorFile = open(errorFileName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-
-            // Open the output file for writing
-            if (outputFile == -1) {
-                perror("Error opening output file for redirection");
-				close(outputFile);
-                continue;
-            }
-
-            // Open the error file for writing
-            if (errorFile == -1) {
-                perror("Error opening error file for redirection");
-                close(errorFile);
-                continue;
-            }
-
-            // Save the current stdout and stderr file descriptors
-            savedStdout = dup(STDOUT_FILENO);
-            savedStderr = dup(STDERR_FILENO);
-            if (savedStdout == -1 || savedStderr == -1) {
-                perror("Error saving stdout or stderr");
-                close(outputFile);
-                close(errorFile);
-                continue;
-            }
-
-			/*
-   				This call to dup duplicates the file descriptor specified by 
-   				STDOUT_FILENO (standard output). It returns a new file descriptor, 
-				or -1 if the operation failed. If -1 is returned, an error message
-				is printed using perror, and the program continues without redirection.
-			*/
-            if (dup2(outputFile, STDOUT_FILENO) == -1) {
-                perror("Error redirecting stdout");
-                close(outputFile);
-                close(errorFile);
-                close(savedStdout);
-                close(savedStderr);
-                continue;
-            }
-
-			/*
-   				This call to dup duplicates the file descriptor specified by 
-   				STDERR_FILENO (standard error). It returns a new file descriptor,
-				or -1 if the operation failed. If -1 is returned, an error message
-				is printed using perror, and the program continues without redirection.
-			*/
-            if (dup2(errorFile, STDERR_FILENO) == -1) {
-                perror("Error redirecting stderr");
-                close(outputFile);
-                close(errorFile);
-                close(savedStdout);
-                close(savedStderr);
-                continue;
-            }
-
-            close(outputFile); // Close the output file descriptor, as it's now duplicated
-            close(errorFile);  // Close the error file descriptor, as it's now duplicated
-            redirectOutput = 1; // Set the flag to indicate redirection is active
         }
+
 
 		// Trim trailing spaces from trimmedInput after removing redirection
         char *endTrimmed = trimmedInput + strlen(trimmedInput) - 1;
@@ -517,6 +527,8 @@ int main(int argc, char *argv[]) {
         if (strcmp(trimmedInput, "exit") == 0) {
             if (redirectOutput) {
                 dup2(savedStdout, STDOUT_FILENO); // Restore stdout
+				dup2(savedStderr, STDERR_FILENO);
+				close(savedStderr);
                 close(savedStdout);
             }
             return 0;
@@ -574,8 +586,12 @@ int main(int argc, char *argv[]) {
 			
 			redirectOutput = 0; // Reset the redirection flag
             savedStdout = -1; // Reset savedStdout
+			savedStderr = -1;
         }
-		redirect =  NULL;
+		// redirect =  NULL;
+
+		// Restore redirection state
+        RestoreRedirection(&savedStdout, &savedStderr, &redirectOutput);
 	}
 	
    

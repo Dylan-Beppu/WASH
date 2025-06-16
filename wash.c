@@ -474,6 +474,8 @@ int main(int argc, char *argv[]) {
     int savedStdout = -1;   // To store the original stdout file descriptor
 	int savedStderr = -1;
 
+	printf("Welcome to WASH Shell\n");
+
 	// Main cmd loop
 	while (1) {
 		
